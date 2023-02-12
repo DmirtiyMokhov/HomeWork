@@ -1,0 +1,133 @@
+USE WideWorldImporters
+
+/*
+1. Все товары, в названии которых есть "urgent" или название начинается с "Animal".
+Вывести: ИД товара (StockItemID), наименование товара (StockItemName).
+Таблицы: Warehouse.StockItems.
+*/
+
+select StockItemID, StockItemName
+from Warehouse.StockItems
+where StockItemName like '%urgent%' 
+or StockItemName like 'Animal%'
+
+/*
+2. Поставщиков (Suppliers), у которых не было сделано ни одного заказа (PurchaseOrders).
+Сделать через JOIN, с подзапросом задание принято не будет.
+Вывести: ИД поставщика (SupplierID), наименование поставщика (SupplierName).
+Таблицы: Purchasing.Suppliers, Purchasing.PurchaseOrders.
+По каким колонкам делать JOIN подумайте самостоятельно.
+*/
+
+select 
+a.SupplierID,
+a.SupplierName,
+b.IsOrderFinalized
+from Purchasing.Suppliers a
+left join Purchasing.PurchaseOrders b
+on a.SupplierID = b.SupplierID
+where IsOrderFinalized = 0
+
+
+/*
+3. Заказы (Orders) с ценой товара (UnitPrice) более 100$ 
+либо количеством единиц (Quantity) товара более 20 штук
+и присутствующей датой комплектации всего заказа (PickingCompletedWhen).
+Вывести:
+* OrderID
+* дату заказа (OrderDate) в формате ДД.ММ.ГГГГ
+* название месяца, в котором был сделан заказ
+* номер квартала, в котором был сделан заказ
+* треть года, к которой относится дата заказа (каждая треть по 4 месяца)
+* имя заказчика (Customer)
+Добавьте вариант этого запроса с постраничной выборкой,
+пропустив первую 1000 и отобразив следующие 100 записей.
+
+Сортировка должна быть по номеру квартала, трети года, дате заказа (везде по возрастанию).
+
+Таблицы: Sales.Orders, Sales.OrderLines, Sales.Customers.
+*/
+
+
+select
+a.OrderID,
+format (a.OrderDate, 'dd.MM.yyyy') as OrderDate,
+datename (month, a.OrderDate) as MonthName,
+datename (quarter, a.OrderDate) as QuarterNumber,
+(cast ((datepart (m, a.OrderDate)) as int) + 3) / 4 as ThridOfTheYear,
+c.CustomerName
+from Sales.Orders a
+left join Sales.OrderLines b
+on a.OrderID = b.OrderID
+left join Sales.Customers c
+on a.CustomerID = c.CustomerID
+where b.UnitPrice < 100 or b.Quantity < 20 and b.PickingCompletedWhen is not null
+order by QuarterNumber, ThridOfTheYear, OrderDate asc
+
+
+
+/*
+4. Заказы поставщикам (Purchasing.Suppliers),
+которые должны быть исполнены (ExpectedDeliveryDate) в январе 2013 года
+с доставкой "Air Freight" или "Refrigerated Air Freight" (DeliveryMethodName)
+и которые исполнены (IsOrderFinalized)
+Вывести:
+* способ доставки (DeliveryMethodName)
+* дата доставки (ExpectedDeliveryDate)
+* имя поставщика
+* имя контактного лица принимавшего заказ (ContactPerson)
+
+Таблицы: Purchasing.Suppliers, Purchasing.PurchaseOrders, Application.DeliveryMethods, Application.People.
+*/
+
+
+select  
+b.DeliveryMethodName, 
+a.ExpectedDeliveryDate,
+c.SupplierName,
+d.FullName
+from Purchasing.PurchaseOrders a
+left join Application.DeliveryMethods b
+on a.DeliveryMethodID = b.DeliveryMethodID
+left join Purchasing.Suppliers c
+on a.SupplierID = c.SupplierID
+left join Application.People d
+on a.ContactPersonID = d.PersonID
+where a.ExpectedDeliveryDate between '20130101' and '20130131' and (b.DeliveryMethodName = 'Air Freight' or b.DeliveryMethodName = 'Refrigerated Air Freight') and a.IsOrderFinalized = 1
+
+
+
+/*
+5. Десять последних продаж (по дате продажи) с именем клиента и именем сотрудника,
+который оформил заказ (SalespersonPerson).
+Сделать без подзапросов.
+*/
+
+select top 10 
+a.InvoiceID,
+b.PreferredName,
+c.CustomerName
+from Sales.Invoices a
+left join Application.People b
+on a.SalespersonPersonID = PersonID
+left join Sales.Customers c
+on a.CustomerID= c.CustomerID
+order by a.InvoiceDate desc
+
+
+/*
+6. Все ид и имена клиентов и их контактные телефоны,
+которые покупали товар "Chocolate frogs 250g".
+Имя товара смотреть в таблице Warehouse.StockItems.
+*/
+
+select 
+a.CustomerID,
+b.CustomerName,
+b.PhoneNumber
+from Sales.Invoices a
+left join Sales.Customers b
+on a.CustomerID = b.CustomerID
+left join Sales.InvoiceLines c
+on a.InvoiceID = c.InvoiceID
+where c.StockItemID = (select StockItemID from Warehouse.StockItems where StockItemName = 'Chocolate frogs 250g')
