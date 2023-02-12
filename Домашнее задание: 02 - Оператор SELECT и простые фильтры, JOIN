@@ -64,6 +64,22 @@ on a.CustomerID = c.CustomerID
 where b.UnitPrice < 100 or b.Quantity < 20 and b.PickingCompletedWhen is not null
 order by QuarterNumber, ThridOfTheYear, OrderDate asc
 
+--Вариант с постраничной выборкой
+select
+a.OrderID,
+format (a.OrderDate, 'dd.MM.yyyy') as OrderDate,
+datename (month, a.OrderDate) as MonthName,
+datename (quarter, a.OrderDate) as QuarterNumber,
+(cast ((datepart (m, a.OrderDate)) as int) + 3) / 4 as ThridOfTheYear,
+c.CustomerName
+from Sales.Orders a
+left join Sales.OrderLines b
+on a.OrderID = b.OrderID
+left join Sales.Customers c
+on a.CustomerID = c.CustomerID
+where b.UnitPrice < 100 or b.Quantity < 20 and b.PickingCompletedWhen is not null
+order by QuarterNumber, ThridOfTheYear, OrderDate asc
+offset 1000 rows fetch first 100 rows only
 
 
 /*
