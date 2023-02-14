@@ -26,7 +26,7 @@ b.IsOrderFinalized
 from Purchasing.Suppliers a
 left join Purchasing.PurchaseOrders b
 on a.SupplierID = b.SupplierID
-where IsOrderFinalized = 0
+where b.PurchaseOrderID is null
 
 
 /*
@@ -61,7 +61,7 @@ left join Sales.OrderLines b
 on a.OrderID = b.OrderID
 left join Sales.Customers c
 on a.CustomerID = c.CustomerID
-where b.UnitPrice < 100 or b.Quantity < 20 and b.PickingCompletedWhen is not null
+where (b.UnitPrice < 100 or b.Quantity < 20) and b.PickingCompletedWhen is not null
 order by QuarterNumber, ThridOfTheYear, OrderDate asc
 
 --Вариант с постраничной выборкой
@@ -77,7 +77,7 @@ left join Sales.OrderLines b
 on a.OrderID = b.OrderID
 left join Sales.Customers c
 on a.CustomerID = c.CustomerID
-where b.UnitPrice < 100 or b.Quantity < 20 and b.PickingCompletedWhen is not null
+where (b.UnitPrice < 100 or b.Quantity < 20) and b.PickingCompletedWhen is not null
 order by QuarterNumber, ThridOfTheYear, OrderDate asc
 offset 1000 rows fetch first 100 rows only
 
@@ -138,12 +138,11 @@ order by a.InvoiceDate desc
 */
 
 select 
-a.CustomerID,
-b.CustomerName,
-b.PhoneNumber
-from Sales.Invoices a
-left join Sales.Customers b
-on a.CustomerID = b.CustomerID
-left join Sales.InvoiceLines c
-on a.InvoiceID = c.InvoiceID
-where c.StockItemID = (select StockItemID from Warehouse.StockItems where StockItemName = 'Chocolate frogs 250g')
+d.CustomerID,
+d.CustomerName,
+d.PhoneNumber
+from Warehouse.StockItems a
+left join Sales.OrderLines b on a.StockItemID = b.StockItemID
+left join Sales.Orders c on b.OrderID = c.OrderID
+left join Sales.Customers d on c.CustomerID = d.CustomerID
+where a.StockItemName = 'Chocolate frogs 250g'
